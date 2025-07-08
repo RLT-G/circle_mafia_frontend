@@ -11,10 +11,10 @@ import DirectReferral from './components/pages/DirectReferrals';
 
 const routes = [
   { path: "/circle_mafia_frontend/", component: Index },
-  { path: "/circle_mafia_frontend/home", component: Home },
-  { path: "/circle_mafia_frontend/wallet", component: Wallet },
-  { path: "/circle_mafia_frontend/referral", component: Referral },
-  { path: "/circle_mafia_frontend/referral/direct", component: DirectReferral },
+  { path: "/home", component: Home },
+  { path: "/wallet", component: Wallet },
+  { path: "/referral", component: Referral },
+  { path: "/referral/direct", component: DirectReferral },
 ];
 
 
