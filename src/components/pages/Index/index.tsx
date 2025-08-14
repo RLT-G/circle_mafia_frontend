@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import Background from "../../ui/Background";
 import Header from "../../ui/Header";
 import RedButton from "../../ui/RedButton";
@@ -6,9 +6,14 @@ import SocialButton from "../../ui/SocialButton";
 import Footer from "../../ui/Footer";
 import PopUpConnectWallet from "../../ui/PopUpConnectWallet";
 import PopUpHowToPlay from "../../ui/PopUpHowToPlay";
+import { UserContext } from "../../../context";
 
 
 const Index: React.FC = () => {
+  const { isAuth } = useContext(UserContext);
+
+  React.useEffect(() => { console.log('isAuth', isAuth) }, [])
+
 
   const [connectIsOpen, setConnectIsOpen] = React.useState<boolean>(false)
   const [howToPlayIsOpen, setHowToPlayIsOpen] = React.useState<boolean>(false)

@@ -1,15 +1,24 @@
-import React from "react";
+import React, { useContext } from "react";
 import TestAvatar from "../../../assets/avatar.png"
 import FrameImg from "../../../assets/Frame.png"
 import SolanaSVG from "../../../assets/solana.svg"
 import RedButton from "../RedButton";
 import WhiteButton from "../WhiteButton";
 import { useNavigate } from "react-router-dom";
+import { UserContext } from "../../../context";
 
 
 const Account: React.FC = () => {
   const navigate = useNavigate()
+  const { userData } = useContext(UserContext)
   const [walletCreated, setWalletCreated] = React.useState<boolean>(false)
+  const [nickname, setNickname] = React.useState<string>("")
+  const [balance, setBalance] = React.useState<number>(0)
+
+  React.useEffect(() => {
+    setNickname(userData.username || "")
+    setBalance(userData.balance || 0)
+  }, [userData])
 
   return (
     <div className="flex gap-5 items-start">
@@ -36,6 +45,8 @@ const Account: React.FC = () => {
             placeholder:text-gray-100 placeholder:font-bold rounded-xl outline-0"
             type="text"
             placeholder="Enter your nickname"
+            value={nickname}
+            onChange={(e) => { setNickname(e.target.value) }}
           />
         </div>
         <div className="w-full flex flex-col gap-2">
@@ -124,7 +135,7 @@ const Account: React.FC = () => {
               </div>
             </div>
             <span className="font-montserrat text-xs text-gray-100">We will match you with a game that fits your bet</span>
-            <RedButton onClick={() => { }}>
+            <RedButton onClick={() => { navigate("/game") }}>
               Search for a game
             </RedButton>
           </div>
@@ -165,7 +176,9 @@ const Account: React.FC = () => {
                         </clipPath>
                       </defs>
                     </svg>
-                    <span className="font-montserrat text-lg font-bold text-white">24,068.83</span>
+                    <span className="font-montserrat text-lg font-bold text-white">
+                      {balance}
+                    </span>
 
                   </div>
                 </div>
