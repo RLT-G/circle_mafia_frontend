@@ -9,7 +9,11 @@ import Referral from './components/pages/Referral';
 import DirectReferral from './components/pages/DirectReferrals';
 import Game from './components/pages/Game';
 import UserProvider from './context';
+import { NotificationProvider } from './context/NotificationContext';
+import Notification from './components/ui/Notification';
+import NotificationTester from './components/ui/NotificationTester/index';
 
+// test git commit
 const routes = [
   // { path: "", component: Index },
   { path: "/", component: Index },
@@ -23,16 +27,22 @@ const routes = [
 
 const App: React.FC = () => {
   return (
-    <UserProvider>
-      <BrowserRouter>
-        <Routes>
-          {routes.map(({ path, component: Component }, index) => (
-            <Route key={index} path={path} element={<Component />} />
-          ))}
-        </Routes>
-      </BrowserRouter>
-    </UserProvider>
-  )
+    <NotificationProvider>
+      <UserProvider>
+        <Notification />
+        {/* NotificationTester is a component to test notifications by pressing 'G' key */}
+
+        <NotificationTester />
+        <BrowserRouter>
+          <Routes>
+            {routes.map(({ path, component: Component }, index) => (
+              <Route key={index} path={path} element={<Component />} />
+            ))}
+          </Routes>
+        </BrowserRouter>
+      </UserProvider>
+    </NotificationProvider>
+  );
 }
 
 
@@ -41,4 +51,3 @@ createRoot(document.getElementById('root')!).render(
   <App />
   // </StrictMode>,
 )
-

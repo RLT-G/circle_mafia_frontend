@@ -32,7 +32,7 @@ const Background: React.FC<IBackground> = ({ children, bgBlack = false }) => {
   return (
     <div
       className="w-full min-h-screen bg-cover bg-repeat transition-all duration-200 ease-out"
-      style={bgBlack ? { background: '#000' } : {
+      style={bgBlack ? { background: '#0a0a0a' } : {
         backgroundImage: `url(${backgroundImage})`,
         backgroundPosition: `${offset.x}px ${offset.y}px`,
       }}
