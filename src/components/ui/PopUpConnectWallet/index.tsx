@@ -4,6 +4,13 @@ import QRExample from "../../../assets/QRExample.webp"
 import { useNavigate } from "react-router-dom";
 import { createSimpleUser, login, type ISimpleUser } from "../../../services/users";
 import { UserContext } from "../../../context";
+import api from "../../../services/api";
+
+// Проверьте, что бэкенд-эндпоинты соответствуют:
+//     GET /api/wallet/nonce -> { nonce: string }
+//     POST /api/wallet/connect -> { success: boolean }
+//     Базовый URL берётся из services/api.ts: http://localhost:8000
+
 
 interface IPopUpConnectWallet {
   onClose: () => any
@@ -22,6 +29,7 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
 
   const [isQR, setIsQR] = React.useState<boolean>(true)
   const [isDesktop, setIsDesktop] = React.useState<boolean>(false)
+  const [tronStatus, setTronStatus] = React.useState<string>("");
 
   const openQR = (): any => {
     setIsQR(true)
@@ -42,6 +50,52 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
     setIsAuth(true)
     navigate("/home")
   }
+
+  const connectTronLink = async () => {
+    try {
+      // Проверка провайдера TronLink
+      const hasTronLink = typeof window !== 'undefined' && window.tronLink;
+      if (!hasTronLink) {
+        setTronStatus("TronLink not installed");
+        return;
+      }
+
+      setTronStatus("Connecting...");
+
+      // Явный запрос доступа к кошельку, если нужно
+      try {
+        if (window.tronLink?.request) {
+          await window.tronLink.request({ method: 'tron_requestAccounts' });
+        }
+      } catch {
+        // Игнорируем, продолжим попытку получить адрес
+        setTronStatus("Requesting accounts failed, trying to get address...");
+      }
+
+      const tronWeb = window.tronWeb || window.tronLink?.tronWeb;
+      const wallet_address: string | undefined = tronWeb?.defaultAddress?.base58;
+
+      if (!wallet_address) {
+        setTronStatus("Address unavailable");
+        return;
+      }
+
+      // Получить nonce с бэкенда
+      const nonceRes = await api.get<{ nonce: string }>("/api/wallet/nonce", { params: { wallet_address } });
+      const nonce = nonceRes.data.nonce;
+
+      // Отправить адрес и nonce на бэкенд
+      const res = await api.post<{ success: boolean }>("/api/wallet/connect", { wallet_address, nonce });
+
+      if (res.data?.success) {
+        setTronStatus("Connected");
+      } else {
+        setTronStatus("Connection failed");
+      }
+    } catch {
+      setTronStatus("Error connecting");
+    }
+  };
 
   return (
     <PopUpWrapper onClose={onClose}>
@@ -82,6 +136,24 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
           <div className="w-full flex flex-col items-center gap-6">
             <span className="text-center font-montserrat text-xs text-gray-100">Choose wallet you want to connect in</span>
             <div className="w-full flex flex-col items-start gap-5">
+              {/* TronLink */}
+              <div className="w-full flex justify-between items-center cursor-pointer group" onClick={connectTronLink}>
+                <div className="flex gap-3 items-center">
+                  {/* TronLink SVG (updated) */}
+                  <svg width="24" height="24" viewBox="0 0 83 83" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="83" height="83" rx="20" fill="#125ECD"/>
+                    <mask id="mask0_2212_104" maskUnits="userSpaceOnUse" x="0" y="0" width="83" height="83">
+                      <rect width="83" height="83" rx="20" fill="#125ECD"/>
+                    </mask>
+                    <g mask="url(#mask0_2212_104)">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M17 24L58.7842 129L117 58.1602L96.3895 38.5915L17 24ZM31.8131 32.3522L89.0374 42.8715L66.8249 61.3555L31.8131 32.3522ZM27.8448 36.2588L64.3332 66.4864L58.628 113.622L27.8448 36.2588ZM95.1117 45.0199L107.256 56.5508L74.0421 62.5585L95.1117 45.0199ZM69.6148 68.9868L106.394 62.3363L64.2078 113.671L69.6148 68.9868Z" fill="white"/>
+                    </g>
+                  </svg>
+                  <span className="font-montserrat text-sm text-white group-hover:text-red-500 transition-colors duration-200">TronLink</span>
+                </div>
+                <span className="font-montserrat text-xs text-green-600">{tronStatus === "Connected" ? "Installed" : tronStatus}</span>
+              </div>
+
               <div className="w-full flex justify-between items-center cursor-pointer group"
                 onClick={signIn}>
                 <div className="flex gap-3 items-center">
@@ -107,7 +179,7 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
               <div className="w-full flex justify-between items-center cursor-pointer group"
                 onClick={signIn}>
                 <div className="flex gap-3 items-center">
-                  <svg width="24" height="8" viewBox="0 0 24 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg width="24" height="24" viewBox="0 0 24 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <g clipPath="url(#clip0_691_1480)">
                       <path d="M20.5073 7.49625V7.99988H23.9731V5.72843H23.4681V7.49625H20.5073ZM20.5073 0V0.503653H23.4681V2.27157H23.9731V0H20.5073ZM18.72 3.89632V2.72599H19.5122C19.8984 2.72599 20.0371 2.85435 20.0371 3.20502V3.41239C20.0371 3.77286 19.9033 3.89632 19.5122 3.89632H18.72ZM19.9775 4.10368C20.3389 4.00986 20.5914 3.67401 20.5914 3.2741C20.5914 3.02227 20.4924 2.79507 20.3043 2.61232C20.0666 2.38512 19.7497 2.27157 19.3388 2.27157H18.2248V5.72831H18.72V4.35061H19.4627C19.8439 4.35061 19.9974 4.50861 19.9974 4.90374V5.72843H20.5024V4.98274C20.5024 4.43953 20.3737 4.23217 19.9775 4.17289V4.10368ZM15.8088 4.21723H17.3338V3.76294H15.8088V2.72587H17.4823V2.27157H15.3037V5.72831H17.5565V5.27401H15.8088V4.21723ZM14.1501 4.39997V4.63697C14.1501 5.13573 13.9669 5.29875 13.5065 5.29875H13.3976C12.9371 5.29875 12.7143 5.15055 12.7143 4.46415V3.53573C12.7143 2.84443 12.947 2.70113 13.4074 2.70113H13.5064C13.957 2.70113 14.1005 2.86905 14.1054 3.33326H14.6501C14.6006 2.65177 14.1451 2.22222 13.4618 2.22222C13.1301 2.22222 12.8528 2.32596 12.6449 2.52341C12.333 2.81479 12.1597 3.30864 12.1597 3.99994C12.1597 4.66662 12.3083 5.16047 12.6152 5.46656C12.8231 5.66902 13.1103 5.77766 13.3926 5.77766C13.6896 5.77766 13.962 5.6591 14.1005 5.40238H14.1698V5.72831H14.6253V3.94568H13.2835V4.39997H14.1501ZM9.78335 2.72587H10.3231C10.8331 2.72587 11.1104 2.85423 11.1104 3.54565V4.45423C11.1104 5.14553 10.8331 5.27401 10.3231 5.27401H9.78335V2.72587ZM10.3676 5.72843C11.3133 5.72843 11.6647 5.01239 11.6647 4.00006C11.6647 2.97291 11.2885 2.27169 10.3576 2.27169H9.28813V5.72843H10.3676ZM6.8969 4.21723H8.42187V3.76294H6.8969V2.72587H8.57032V2.27157H6.39177V5.72831H8.64464V5.27401H6.8969V4.21723ZM3.97575 2.27157H3.47078V5.72831H5.74829V5.27401H3.97575V2.27157ZM0 5.72843V8H3.46575V7.49625H0.504968V5.72843H0ZM0 0V2.27157H0.504968V0.503653H3.46575V0H0Z" fill="white" />
                     </g>
@@ -140,34 +212,6 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M17.9113 11.4596C17.4099 10.9584 17.4099 10.1458 17.9113 9.64462C18.4126 9.14343 19.2255 9.14343 19.7269 9.64462C20.2282 10.1458 20.2282 10.9584 19.7269 11.4596C19.2255 11.9608 18.4126 11.9608 17.9113 11.4596ZM13.5992 15.7702C13.2232 15.3943 13.2232 14.7849 13.5992 14.409C13.9752 14.0331 14.5849 14.0331 14.9609 14.409C15.3369 14.7849 15.3369 15.3943 14.9609 15.7702C14.5849 16.1461 13.9752 16.1461 13.5992 15.7702ZM20.4077 13.5015C20.0317 13.1256 20.0317 12.5161 20.4077 12.1402C20.7837 11.7643 21.3934 11.7643 21.7694 12.1402C22.1455 12.5161 22.1455 13.1256 21.7694 13.5015C21.3934 13.8774 20.7837 13.8774 20.4077 13.5015ZM18.1382 15.7702C17.7622 15.3943 17.7622 14.7849 18.1382 14.409C18.5142 14.0331 19.1239 14.0331 19.4999 14.409C19.8759 14.7849 19.8759 15.3943 19.4999 15.7702C19.1239 16.1461 18.5142 16.1461 18.1382 15.7702ZM22.9042 15.5433C22.6535 15.2927 22.6535 14.8864 22.9042 14.6358C23.1549 14.3852 23.5613 14.3852 23.812 14.6358C24.0627 14.8864 24.0627 15.2927 23.812 15.5433C23.5613 15.7939 23.1549 15.7939 22.9042 15.5433ZM20.6347 17.8121C20.384 17.5615 20.384 17.1552 20.6347 16.9046C20.8854 16.654 21.2918 16.654 21.5425 16.9046C21.7932 17.1552 21.7932 17.5615 21.5425 17.8121C21.2918 18.0626 20.8854 18.0626 20.6347 17.8121ZM15.6418 13.7283C15.1404 13.2271 15.1404 12.4145 15.6418 11.9134C16.1431 11.4122 16.956 11.4122 17.4574 11.9134C17.9587 12.4145 17.9587 13.2271 17.4574 13.7283C16.956 14.2295 16.1431 14.2295 15.6418 13.7283ZM15.6418 9.19088C15.1404 8.68968 15.1404 7.87709 15.6418 7.3759C16.1431 6.8747 16.956 6.8747 17.4574 7.3759C17.9587 7.87709 17.9587 8.68968 17.4574 9.19088C16.956 9.69207 16.1431 9.69207 15.6418 9.19088ZM13.3723 11.4596C12.8709 10.9584 12.8709 10.1458 13.3723 9.64462C13.8736 9.14343 14.6865 9.14343 15.1879 9.64462C15.6892 10.1458 15.6892 10.9584 15.1879 11.4596C14.6865 11.9608 13.8736 11.9608 13.3723 11.4596ZM8.81214 11.4596C8.31077 10.9584 8.31077 10.1458 8.81214 9.64462C9.31351 9.14343 10.1264 9.14343 10.6277 9.64462C11.1291 10.1458 11.1291 10.9584 10.6277 11.4596C10.1264 11.9608 9.31351 11.9608 8.81214 11.4596ZM4.50008 15.7702C4.12405 15.3943 4.12405 14.7849 4.50008 14.409C4.8761 14.0331 5.48576 14.0331 5.86178 14.409C6.23781 14.7849 6.23781 15.3943 5.86178 15.7702C5.48576 16.1461 4.8761 16.1461 4.50008 15.7702ZM11.3086 13.5015C10.9326 13.1256 10.9326 12.5161 11.3086 12.1402C11.6846 11.7643 12.2943 11.7643 12.6703 12.1402C13.0463 12.5161 13.0463 13.1256 12.6703 13.5015C12.2943 13.8774 11.6846 13.8774 11.3086 13.5015ZM9.03909 15.7702C8.66307 15.3943 8.66307 14.7849 9.03909 14.409C9.41512 14.0331 10.0248 14.0331 10.4008 14.409C10.7768 14.7849 10.7768 15.3943 10.4008 15.7702C10.0248 16.1461 9.41512 16.1461 9.03909 15.7702ZM0.188012 15.5433C-0.0626707 15.2927 -0.0626707 14.8864 0.188012 14.6358C0.438695 14.3852 0.845132 14.3852 1.09581 14.6358C1.3465 14.8864 1.3465 15.2927 1.09581 15.5433C0.845132 15.7939 0.438695 15.7939 0.188012 15.5433ZM2.45752 17.8121C2.20684 17.5615 2.20684 17.1552 2.45752 16.9046C2.7082 16.654 3.11464 16.654 3.36532 16.9046C3.61601 17.1552 3.61601 17.5615 3.36532 17.8121C3.11464 18.0626 2.7082 18.0626 2.45752 17.8121ZM11.5356 17.8121C11.2849 17.5615 11.2849 17.1552 11.5356 16.9046C11.7862 16.654 12.1927 16.654 12.4434 16.9046C12.694 17.1552 12.694 17.5615 12.4434 17.8121C12.1927 18.0626 11.7862 18.0626 11.5356 17.8121ZM2.23057 13.5015C1.85454 13.1256 1.85454 12.5161 2.23057 12.1402C2.60659 11.7643 3.21625 11.7643 3.59227 12.1402C3.9683 12.5161 3.9683 13.1256 3.59227 13.5015C3.21625 13.8774 2.60659 13.8774 2.23057 13.5015ZM6.54263 13.7283C6.04127 13.2271 6.04127 12.4145 6.54263 11.9134C7.044 11.4122 7.85687 11.4122 8.35824 11.9134C8.85961 12.4145 8.85961 13.2271 8.35824 13.7283C7.85687 14.2295 7.044 14.2295 6.54263 13.7283ZM6.54263 9.19088C6.04127 8.68968 6.04127 7.87709 6.54263 7.3759C7.044 6.8747 7.85687 6.8747 8.35824 7.3759C8.85961 7.87709 8.85961 8.68968 8.35824 9.19088C7.85687 9.69207 7.044 9.69207 6.54263 9.19088ZM4.27313 11.4596C3.77176 10.9584 3.77176 10.1458 4.27313 9.64462C4.77449 9.14343 5.58737 9.14343 6.08873 9.64462C6.5901 10.1458 6.5901 10.9584 6.08873 11.4596C5.58737 11.9608 4.77449 11.9608 4.27313 11.4596Z" fill="white" />
                   </svg>
-                  <span className="font-montserrat text-sm text-white group-hover:text-red-500 transition-colors duration-200">MathWallet</span>
-                </div>
-                <span className="font-montserrat text-xs text-green-600"></span>
-              </div>
-
-              <div className="w-full flex justify-between items-center cursor-pointer group"
-                onClick={signIn}>
-                <div className="flex gap-3 items-center">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g clipPath="url(#clip0_691_1494)">
-                      <mask id="mask0_691_1494" style={{ maskType: "alpha" }} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
-                        <path d="M0 12C0 2.118 2.118 0 12 0C21.882 0 24 2.118 24 12C24 21.882 21.882 24 12 24C2.118 24 0 21.882 0 12Z" fill="#C4C4C4" />
-                      </mask>
-                      <g mask="url(#mask0_691_1494)">
-                        <path d="M24 0H0V24H24V0Z" fill="url(#paint0_linear_691_1494)" />
-                        <path d="M11.8966 17.5151C13.098 17.5676 14.2816 17.2179 15.2605 16.5207L15.2653 16.52C15.6916 16.2081 16.0473 15.8093 16.3105 15.3515C16.5738 14.8936 16.7366 14.3842 16.79 13.8599L14.4694 13.8515C14.344 14.3575 14.0529 14.8072 13.6408 15.1272C13.1494 15.5024 12.5416 15.6894 11.9243 15.6571C11.3803 15.7001 10.8411 15.5421 10.4069 15.2109C10.2602 15.0874 10.142 14.9326 10.0597 14.7581C9.97746 14.5836 9.93525 14.3942 9.9345 14.2027C9.91266 13.9691 9.96552 13.7354 10.0849 13.533C10.2044 13.3306 10.3849 13.1723 10.5995 13.0784C11.1909 12.8384 11.8054 12.6616 12.4335 12.5492C13.0494 12.4192 13.6558 12.2464 14.2465 12.0322C14.8087 11.8391 15.3234 11.5237 15.7483 11.1072C15.954 10.8905 16.1128 10.6344 16.2159 10.3553C16.3189 10.0761 16.365 9.77793 16.3499 9.47979C16.3585 9.02886 16.2666 8.58069 16.081 8.16924C15.8954 7.75779 15.6196 7.39323 15.2751 7.10205C14.4171 6.41925 13.3364 6.07545 12.2404 6.13845C11.1972 6.08664 10.1665 6.39207 9.31923 7.00299C8.94246 7.30197 8.63091 7.677 8.40294 8.10018C8.17563 8.52474 8.0373 8.99136 7.9968 9.47016L10.2087 9.47862C10.2364 9.26265 10.3083 9.05346 10.4189 8.86731C10.5302 8.67915 10.6782 8.51676 10.8533 8.38833C11.2722 8.10903 11.7706 7.9716 12.2738 7.99989C12.7506 7.97184 13.2226 8.10063 13.6187 8.36598C13.7681 8.47119 13.8884 8.60964 13.9699 8.7726C14.0529 8.93487 14.0937 9.11481 14.0911 9.29616C14.0837 9.49512 14.0145 9.68601 13.8971 9.84498C13.7783 10.0046 13.6147 10.1256 13.428 10.1902C12.8692 10.4478 12.2832 10.6444 11.6809 10.7744C11.0026 10.922 10.3303 11.1057 9.67166 11.3267C9.10539 11.5049 8.59347 11.8223 8.18214 12.249C7.77015 12.7524 7.56603 13.3929 7.61049 14.0414C7.59372 14.5134 7.68765 14.9827 7.88412 15.4125C8.08059 15.8423 8.37348 16.2204 8.74101 16.517C9.63981 17.2201 10.7592 17.5734 11.8966 17.5151Z" fill="white" />
-                      </g>
-                    </g>
-                    <defs>
-                      <linearGradient id="paint0_linear_691_1494" x1="0" y1="0" x2="0" y2="24" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#454545" />
-                        <stop offset="1" stopColor="#262626" />
-                      </linearGradient>
-                      <clipPath id="clip0_691_1494">
-                        <rect width="24" height="24" fill="white" />
-                      </clipPath>
-                    </defs>
-                  </svg>
                   <span className="font-montserrat text-sm text-white group-hover:text-red-500 transition-colors duration-200">Solog</span>
                 </div>
                 <span className="font-montserrat text-xs text-green-600"></span>
@@ -191,14 +235,12 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
                 </div>
                 <span className="font-montserrat text-xs text-green-600"></span>
               </div>
-
             </div>
           </div>
         )}
       </div>
-
     </PopUpWrapper>
-  )
-}
+  );
+};
 
-export default PopUpConnectWallet
+export default PopUpConnectWallet;

@@ -13,7 +13,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import Notification from './components/ui/Notification';
 import NotificationTester from './components/ui/NotificationTester/index';
 
-// test git commit
+
 const routes = [
   // { path: "", component: Index },
   { path: "/", component: Index },
