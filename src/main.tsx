@@ -11,7 +11,7 @@ import Game from './components/pages/Game';
 import UserProvider from './context';
 import { NotificationProvider } from './context/NotificationContext';
 import Notification from './components/ui/Notification';
-import NotificationTester from './components/ui/NotificationTester/index';
+//import NotificationTester from './components/ui/NotificationTester/index';
 
 
 const routes = [
@@ -31,8 +31,7 @@ const App: React.FC = () => {
       <UserProvider>
         <Notification />
         {/* NotificationTester is a component to test notifications by pressing 'G' key */}
-
-        <NotificationTester />
+        {/*<NotificationTester />*/}
         <BrowserRouter>
           <Routes>
             {routes.map(({ path, component: Component }, index) => (

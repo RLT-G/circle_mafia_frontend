@@ -30,6 +30,7 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
   const [isQR, setIsQR] = React.useState<boolean>(true)
   const [isDesktop, setIsDesktop] = React.useState<boolean>(false)
   const [tronStatus, setTronStatus] = React.useState<string>("");
+  const [showTronLinkInstall, setShowTronLinkInstall] = React.useState(false);
 
   const openQR = (): any => {
     setIsQR(true)
@@ -51,7 +52,29 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
     navigate("/home")
   }
 
+  // Функция для определения мобильного устройства
+  const isMobile = () => {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
   const connectTronLink = async () => {
+    if (isMobile()) {
+      // Формируем deeplink для TronLink
+      const json = {
+        url: window.location.origin,
+        action: "open",
+        protocol: "tronlink",
+        version: "1.0"
+      };
+      const encodedParam = encodeURIComponent(JSON.stringify(json));
+      const deeplink = `tronlinkoutside://pull.activity?param=${encodedParam}`;
+      window.location.href = deeplink;
+      setTimeout(() => {
+        setShowTronLinkInstall(true);
+      }, 1200);
+      return;
+    }
     try {
       // Проверка провайдера TronLink
       const hasTronLink = typeof window !== 'undefined' && window.tronLink;
@@ -236,6 +259,21 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
                 <span className="font-montserrat text-xs text-green-600"></span>
               </div>
             </div>
+            {showTronLinkInstall && (
+              <div className="w-full flex flex-col items-center gap-2 mt-4">
+                <span className="text-center font-montserrat text-xs text-red-500">
+                    Failed to open tronlink. Make sure the TronLink app is installed on your device.
+                </span>
+                <a
+                  href="https://tronlink.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline text-xs font-montserrat"
+                >
+                    Install TronLink
+                </a>
+              </div>
+            )}
           </div>
         )}
       </div>
