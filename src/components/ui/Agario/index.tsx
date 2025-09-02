@@ -9,6 +9,7 @@ import Spell2PNG from "../../../assets/spell2.png"
 import Spell3PNG from "../../../assets/spell3.png"
 import Spell4PNG from "../../../assets/spell4.png"
 import Spell5PNG from "../../../assets/spell5.png"
+import GameCanvas from "../GameCanvas";
 
 
 interface IAgario {
@@ -16,32 +17,12 @@ interface IAgario {
 }
 
 const Agario: React.FC<IAgario> = ({ wsc }) => {
-  const gameRef = useRef<Phaser.Game | null>(null)
   const { userData, gameData, setGameData } = useContext(UserContext)
 
-  React.useEffect(() => {
-    if (!gameRef.current) {
-      const config: Phaser.Types.Core.GameConfig = {
-        type: Phaser.AUTO,
-        width: window.innerWidth,
-        height: window.innerHeight,
-        backgroundColor: "#000000",
-        parent: "game-container",
-        scene: [new MainScene(wsc, userData.user_id, 1000, 600, setGameData)],
-        physics: { default: "arcade" },
-        fps: {
-          target: 60,
-          forceSetTimeOut: true
-        },
-      };
-
-      gameRef.current = new Phaser.Game(config);
-    }
-  }, [])
 
   return (
     <div className="relative w-full h-screen flex justify-center items-center">
-      <div id="game-container" className="absolute top-0 left-0 w-full h-screen z-10" />
+      <GameCanvas wsc={wsc} userId={userData.user_id} />
       <div className="absolute top-0 left-0 w-full h-screen">
         <div className="absolute top-10 left-10 z-20">
           <div className="flex flex-col gap-5 items-start">

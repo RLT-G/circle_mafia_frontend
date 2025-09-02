@@ -2,15 +2,11 @@ import React, { useContext } from "react";
 import PopUpWrapper from "../PopUpWrapper";
 import QRExample from "../../../assets/QRExample.webp"
 import { useNavigate } from "react-router-dom";
-import { createSimpleUser, login, type ISimpleUser } from "../../../services/users";
+import UserService from "../../../services/users";
 import { UserContext } from "../../../context";
 import api from "../../../services/api";
-
-// Проверьте, что бэкенд-эндпоинты соответствуют:
-//     GET /api/wallet/nonce -> { nonce: string }
-//     POST /api/wallet/connect -> { success: boolean }
-//     Базовый URL берётся из services/api.ts: http://localhost:8000
-
+import TronLinkService from "../../../services/tronLink";
+import Scripts from "../../../scripts";
 
 interface IPopUpConnectWallet {
   onClose: () => any
@@ -43,82 +39,61 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
   }
 
   const signIn = async () => {
-    const simpleUser: ISimpleUser = await createSimpleUser()
-    setUserData(simpleUser)
-    const { access_token: accessToken } = await login(simpleUser)
-    setAccessToken(accessToken)
-    localStorage.setItem("accessToken", accessToken)
-    setIsAuth(true)
-    navigate("/home")
-  }
+    // const isMobile = Scripts.isMobile()
+    const isMobile = false
+    // FIXIT: бесконечный редирект на мобилках будет
+    if (isMobile) {
+      TronLinkService.redirectToMobileApp()
+      return
+    }
 
-  // Функция для определения мобильного устройства
-  const isMobile = () => {
-    if (typeof navigator === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  };
-
-  const connectTronLink = async () => {
-    if (isMobile()) {
-      // Формируем deeplink для TronLink
-      const json = {
-        url: window.location.origin,
-        action: "open",
-        protocol: "tronlink",
-        version: "1.0"
-      };
-      const encodedParam = encodeURIComponent(JSON.stringify(json));
-      const deeplink = `tronlinkoutside://pull.activity?param=${encodedParam}`;
-      window.location.href = deeplink;
-      setTimeout(() => {
-        setShowTronLinkInstall(true);
-      }, 1200);
+    if (!TronLinkService.isInstalled()) {
+      setTronStatus("TronLink not installed");
       return;
     }
+
+    setTronStatus("Connecting...");
+
     try {
-      // Проверка провайдера TronLink
-      const hasTronLink = typeof window !== 'undefined' && window.tronLink;
-      if (!hasTronLink) {
-        setTronStatus("TronLink not installed");
-        return;
-      }
-
-      setTronStatus("Connecting...");
-
-      // Явный запрос доступа к кошельку, если нужно
-      try {
-        if (window.tronLink?.request) {
-          await window.tronLink.request({ method: 'tron_requestAccounts' });
-        }
-      } catch {
-        // Игнорируем, продолжим попытку получить адрес
-        setTronStatus("Requesting accounts failed, trying to get address...");
-      }
-
-      const tronWeb = window.tronWeb || window.tronLink?.tronWeb;
-      const wallet_address: string | undefined = tronWeb?.defaultAddress?.base58;
-
-      if (!wallet_address) {
-        setTronStatus("Address unavailable");
-        return;
-      }
-
-      // Получить nonce с бэкенда
-      const nonceRes = await api.get<{ nonce: string }>("/api/wallet/nonce", { params: { wallet_address } });
-      const nonce = nonceRes.data.nonce;
-
-      // Отправить адрес и nonce на бэкенд
-      const res = await api.post<{ success: boolean }>("/api/wallet/connect", { wallet_address, nonce });
-
-      if (res.data?.success) {
-        setTronStatus("Connected");
-      } else {
-        setTronStatus("Connection failed");
-      }
-    } catch {
-      setTronStatus("Error connecting");
+      await TronLinkService.requestAccounts()
+    } catch (error) {
+      console.error(error)
+      setTronStatus("Requesting accounts failed, trying to get address...");
     }
-  };
+
+    const address = TronLinkService.getWalletAddress();
+    console.log({ address })
+
+    if (!address) {
+      setTronStatus("Address unavailable");
+      return;
+    }
+
+    const nonce = await UserService.getNonce(address)
+    console.log({ nonce })
+
+    const signature = await TronLinkService.signMessage(address, nonce)
+    console.log({ signature })
+
+    const { access_token, wallet_address, user_id, username } = await UserService.login(
+      address,
+      signature,
+      nonce
+    )
+    console.log({ access_token, wallet_address, user_id, username })
+
+    setUserData({
+      wallet_address,
+      user_id,
+      username
+    })
+    setAccessToken(access_token)
+    localStorage.setItem("accessToken", access_token)
+    setIsAuth(true)
+    navigate("/home")
+
+    setTronStatus("Connected");
+  }
 
   return (
     <PopUpWrapper onClose={onClose}>
@@ -160,16 +135,16 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
             <span className="text-center font-montserrat text-xs text-gray-100">Choose wallet you want to connect in</span>
             <div className="w-full flex flex-col items-start gap-5">
               {/* TronLink */}
-              <div className="w-full flex justify-between items-center cursor-pointer group" onClick={connectTronLink}>
+              <div className="w-full flex justify-between items-center cursor-pointer group" onClick={signIn}>
                 <div className="flex gap-3 items-center">
                   {/* TronLink SVG (updated) */}
                   <svg width="24" height="24" viewBox="0 0 83 83" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="83" height="83" rx="20" fill="#125ECD"/>
+                    <rect width="83" height="83" rx="20" fill="#125ECD" />
                     <mask id="mask0_2212_104" maskUnits="userSpaceOnUse" x="0" y="0" width="83" height="83">
-                      <rect width="83" height="83" rx="20" fill="#125ECD"/>
+                      <rect width="83" height="83" rx="20" fill="#125ECD" />
                     </mask>
                     <g mask="url(#mask0_2212_104)">
-                      <path fillRule="evenodd" clipRule="evenodd" d="M17 24L58.7842 129L117 58.1602L96.3895 38.5915L17 24ZM31.8131 32.3522L89.0374 42.8715L66.8249 61.3555L31.8131 32.3522ZM27.8448 36.2588L64.3332 66.4864L58.628 113.622L27.8448 36.2588ZM95.1117 45.0199L107.256 56.5508L74.0421 62.5585L95.1117 45.0199ZM69.6148 68.9868L106.394 62.3363L64.2078 113.671L69.6148 68.9868Z" fill="white"/>
+                      <path fillRule="evenodd" clipRule="evenodd" d="M17 24L58.7842 129L117 58.1602L96.3895 38.5915L17 24ZM31.8131 32.3522L89.0374 42.8715L66.8249 61.3555L31.8131 32.3522ZM27.8448 36.2588L64.3332 66.4864L58.628 113.622L27.8448 36.2588ZM95.1117 45.0199L107.256 56.5508L74.0421 62.5585L95.1117 45.0199ZM69.6148 68.9868L106.394 62.3363L64.2078 113.671L69.6148 68.9868Z" fill="white" />
                     </g>
                   </svg>
                   <span className="font-montserrat text-sm text-white group-hover:text-red-500 transition-colors duration-200">TronLink</span>
@@ -262,7 +237,7 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
             {showTronLinkInstall && (
               <div className="w-full flex flex-col items-center gap-2 mt-4">
                 <span className="text-center font-montserrat text-xs text-red-500">
-                    Failed to open tronlink. Make sure the TronLink app is installed on your device.
+                  Failed to open tronlink. Make sure the TronLink app is installed on your device.
                 </span>
                 <a
                   href="https://tronlink.org/"
@@ -270,7 +245,7 @@ const PopUpConnectWallet: React.FC<IPopUpConnectWallet> = ({ onClose }) => {
                   rel="noopener noreferrer"
                   className="text-blue-400 underline text-xs font-montserrat"
                 >
-                    Install TronLink
+                  Install TronLink
                 </a>
               </div>
             )}

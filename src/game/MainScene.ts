@@ -39,6 +39,7 @@ export class MainScene extends Phaser.Scene {
     // Подписка на данные от сервера
     this.wsc.onGameState((state: IGameState) => {
       if (!this.initialized) {
+        console.log(state)
         this.initGame(state);
         this.initialized = true;
       }

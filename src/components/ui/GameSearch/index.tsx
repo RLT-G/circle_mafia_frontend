@@ -20,7 +20,7 @@ const secondsSince = (isoDate: string): number => {
 
 
 const filterRecentRooms = (rooms: IRoom[]): IRoom[] => {
-  const FIFTEEN_MINUTES = 5 * 60; // в секундах
+  const FIFTEEN_MINUTES = 0.5 * 60; // в секундах
 
   return rooms.filter((room) => {
     const secondsPassed = secondsSince(room.created_at);
@@ -80,7 +80,8 @@ const GameSearch: React.FC<IGameSearch> = ({ initLobby, wsc }) => {
       setwsData(wsd => ({
         ...wsd,
         currentRoom: data.room_id,
-        players: data.players
+        players: data.players,
+        time_to_start: data.time_to_start
       }))
       initLobby()
     })

@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import WhiteButton from "../WhiteButton";
 import BlackButton from "../BlackButton";
+import Scripts from "../../../scripts";
+import UserService from "../../../services/users";
 
 interface IHeader {
   openHowToPlay?: () => any;
@@ -8,6 +10,33 @@ interface IHeader {
 }
 
 const Header: React.FC<IHeader> = ({ openHowToPlay, needLogo = false }) => {
+  const [latency, setLatency] = React.useState<number>(0)
+  const [playersCount, setPlayersCount] = React.useState(0)
+  const [gameCount, setGameCount] = React.useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const l = await Scripts.pingServer();
+      if (l !== null) {
+        setLatency(l);
+      }
+      const pc = await UserService.getPlayersCount();
+      if (pc) {
+        // Делаем "живее" — добавляем небольшой рандом
+        const variation = Math.floor(Math.random() * 6) - 3; // от -3 до +2
+        let fakePc = pc + variation;
+
+        // Не даём уйти в отрицательные значения
+        if (fakePc < 0) fakePc = 0;
+
+        setPlayersCount(fakePc);
+        setGameCount(Math.ceil(fakePc / 7));
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="container fixed top-[0] pt-10 flex justify-between mx-auto z-10">
       <div className="flex align-middle space-x-6 mb-6">
@@ -18,21 +47,21 @@ const Header: React.FC<IHeader> = ({ openHowToPlay, needLogo = false }) => {
         )}
         <BlackButton
           onClick={() => { }}
-          ping="23 ms"
+          ping={`${latency} ms`}
         >
           Region 1
         </BlackButton>
       </div>
       <div className="flex gap-3 items-end flex-col">
         <div className="flex space-x-2">
-          <span className="font-montserrat text-white font-bold text-lg">1,828</span>
+          <span className="font-montserrat text-white font-bold text-lg">{gameCount}</span>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" clipRule="evenodd" d="M8.50044 10.193C6.53649 10.2248 4.96982 11.842 5.00044 13.806V16.387C4.96982 18.351 6.53649 19.9682 8.50044 20H15.5004C17.4644 19.9682 19.0311 18.351 19.0004 16.387V13.806C19.0311 11.842 17.4644 10.2248 15.5004 10.193H8.50044Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M11.2506 10.193C11.2506 10.6072 11.5864 10.943 12.0006 10.943C12.4149 10.943 12.7506 10.6072 12.7506 10.193H11.2506ZM11.0006 6.581L11.1886 5.85494C11.1826 5.85337 11.1765 5.85188 11.1704 5.85047L11.0006 6.581ZM9.75864 6.452V7.202C9.76398 7.202 9.76931 7.20194 9.77465 7.20183L9.75864 6.452ZM8.75064 4C8.75064 3.58579 8.41485 3.25 8.00064 3.25C7.58642 3.25 7.25064 3.58579 7.25064 4H8.75064ZM8.75064 16.388C8.75064 16.8022 9.08642 17.138 9.50064 17.138C9.91485 17.138 10.2506 16.8022 10.2506 16.388H8.75064ZM10.2506 14.84C10.2506 14.4258 9.91485 14.09 9.50064 14.09C9.08642 14.09 8.75064 14.4258 8.75064 14.84H10.2506ZM8.75064 14.84C8.75064 15.2542 9.08642 15.59 9.50064 15.59C9.91485 15.59 10.2506 15.2542 10.2506 14.84H8.75064ZM10.2506 13.291C10.2506 12.8768 9.91485 12.541 9.50064 12.541C9.08642 12.541 8.75064 12.8768 8.75064 13.291H10.2506ZM9.50064 14.09C9.08642 14.09 8.75064 14.4258 8.75064 14.84C8.75064 15.2542 9.08642 15.59 9.50064 15.59V14.09ZM11.0006 15.59C11.4149 15.59 11.7506 15.2542 11.7506 14.84C11.7506 14.4258 11.4149 14.09 11.0006 14.09V15.59ZM9.50064 15.59C9.91485 15.59 10.2506 15.2542 10.2506 14.84C10.2506 14.4258 9.91485 14.09 9.50064 14.09V15.59ZM8.00064 14.09C7.58642 14.09 7.25064 14.4258 7.25064 14.84C7.25064 15.2542 7.58642 15.59 8.00064 15.59V14.09ZM13.462 13.8021C13.1738 14.0996 13.1813 14.5744 13.4787 14.8626C13.7762 15.1509 14.251 15.1434 14.5393 14.8459L13.462 13.8021ZM15.5393 13.8139C15.8275 13.5164 15.82 13.0416 15.5226 12.7534C15.2251 12.4651 14.7503 12.4726 14.462 12.7701L15.5393 13.8139ZM14.462 15.8701C14.1738 16.1676 14.1813 16.6424 14.4787 16.9306C14.7762 17.2189 15.251 17.2114 15.5393 16.9139L14.462 15.8701ZM16.5393 15.8819C16.8275 15.5844 16.82 15.1096 16.5226 14.8214C16.2251 14.5331 15.7503 14.5406 15.462 14.8381L16.5393 15.8819ZM12.7506 10.193C12.7506 9.61059 12.8248 8.65212 12.7283 7.90164C12.6287 7.12821 12.2985 6.14229 11.1886 5.85494L10.8127 7.30706C10.9928 7.35371 11.1626 7.48729 11.2405 8.09311C11.3214 8.72188 11.2506 9.40241 11.2506 10.193H12.7506ZM11.1704 5.85047C10.7025 5.74173 10.2229 5.69192 9.74263 5.70217L9.77465 7.20183C10.1299 7.19424 10.4847 7.2311 10.8309 7.31153L11.1704 5.85047ZM9.75864 5.702C9.3249 5.702 9.1017 5.62443 8.9924 5.56095C8.90043 5.50753 8.84919 5.44223 8.81049 5.3386C8.7641 5.21439 8.73943 5.04034 8.73584 4.79408C8.7341 4.67435 8.73724 4.55063 8.74141 4.41563C8.7454 4.2864 8.75064 4.13962 8.75064 4H7.25064C7.25064 4.11038 7.2465 4.22772 7.24212 4.36931C7.23793 4.50512 7.23371 4.6589 7.236 4.81592C7.24047 5.12316 7.26943 5.49961 7.40529 5.8634C7.54884 6.24777 7.80847 6.60797 8.23906 6.85805C8.65233 7.09807 9.16337 7.202 9.75864 7.202V5.702ZM10.2506 16.388V14.84H8.75064V16.388H10.2506ZM10.2506 14.84V13.291H8.75064V14.84H10.2506ZM9.50064 15.59H11.0006V14.09H9.50064V15.59ZM9.50064 14.09H8.00064V15.59H9.50064V14.09ZM14.5393 14.8459L15.5393 13.8139L14.462 12.7701L13.462 13.8021L14.5393 14.8459ZM15.5393 16.9139L16.5393 15.8819L15.462 14.8381L14.462 15.8701L15.5393 16.9139Z" fill="white" />
           </svg>
         </div>
         <div className="flex space-x-2">
-          <span className="font-montserrat text-white font-bold text-lg">13,345</span>
+          <span className="font-montserrat text-white font-bold text-lg">{playersCount}</span>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path fillRule="evenodd" clipRule="evenodd" d="M15 8C15 9.65685 13.6569 11 12 11C10.3431 11 9 9.65685 9 8C9 6.34315 10.3431 5 12 5C12.7956 5 13.5587 5.31607 14.1213 5.87868C14.6839 6.44129 15 7.20435 15 8Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             <path fillRule="evenodd" clipRule="evenodd" d="M15.5 14H8.5C7.11929 14 6 15.1193 6 16.5C6 17.8807 7.11929 19 8.5 19H15.5C16.8807 19 18 17.8807 18 16.5C18 15.1193 16.8807 14 15.5 14V14Z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

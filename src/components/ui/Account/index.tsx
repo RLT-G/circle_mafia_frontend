@@ -6,6 +6,9 @@ import RedButton from "../RedButton";
 import WhiteButton from "../WhiteButton";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../../context";
+import UserService from "../../../services/users";
+import { apiURL } from "../../../constans";
+import Scripts from "../../../scripts";
 
 
 const Account: React.FC = () => {
@@ -14,11 +17,39 @@ const Account: React.FC = () => {
   const [walletCreated, setWalletCreated] = React.useState<boolean>(false)
   const [nickname, setNickname] = React.useState<string>("")
   const [balance, setBalance] = React.useState<number>(0)
+  const [walletAddress, setWalletAddress] = React.useState("0x3234565..34")
+  const [avatarLink, setAvatarLink] = React.useState<string>("")
+
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await UserService.uploadAvatar(formData)
+    if (res?.avatar_url) {
+      console.log({ res })
+      setAvatarLink(`${apiURL}${res.avatar_url}`)
+    }
+  };
+
+  const handleInputClick = () => {
+    inputRef.current?.click();
+  }
 
   React.useEffect(() => {
     setNickname(userData.username || "")
     setBalance(userData.balance || 0)
+    setWalletAddress(Scripts.shortTron(userData.wallet_address || ""))
   }, [userData])
+
+  React.useEffect(() => {
+    (async () => {
+      const { avatar_url } = await UserService.getAvatarInfo()
+      setAvatarLink(`${apiURL}${avatar_url}`)
+    })()
+  }, [])
 
   return (
     <div className="flex gap-5 items-start">
@@ -26,7 +57,8 @@ const Account: React.FC = () => {
       min-w-[360px] h-[482px] overflow-hidden flex flex-col gap-6 items-center">
         <div className="flex flex-col gap-4 items-center">
           <div className="w-20 h-20 bg-cover bg-no-repeat relative rounded-[50%] cursor-pointer"
-            style={{ backgroundImage: `url(${TestAvatar})` }}
+            style={{ backgroundImage: `url(${avatarLink})` }}
+            onClick={handleInputClick}
           >
             <div className="w-8 h-8 bg-black rounded-[50%] flex justify-center 
             items-center absolute bottom-0 right-0 animate-bounce">
@@ -36,7 +68,7 @@ const Account: React.FC = () => {
               </svg>
             </div>
           </div>
-          <span className="font-montserrat text-lg text-red-400 font-bold">0x3234565..34</span>
+          <span className="font-montserrat text-lg text-red-400 font-bold">{walletAddress}</span>
         </div>
         <div className="w-full flex items-start">
           <input
@@ -277,6 +309,14 @@ const Account: React.FC = () => {
           <span className="font-montserrat text-lg text-red-400 font-bold">OFFERS</span>
         </div>
       </div>
+      {/* Скрытый инпут */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useState } from "react";
-import { getMe } from "../services/users";
+import UserService from "../services/users";
 import type { IRoom } from "../services/wsClient";
 
 interface IUserProvider {
@@ -9,10 +9,7 @@ interface IUserProvider {
 export interface IUserData {
   user_id: string;
   username: string;
-  email: string;
-  balance: number;
-  password?: string;
-  hashed_password?: string;
+  wallet_address: string;
 }
 
 export interface IPlayer {
@@ -52,13 +49,12 @@ const UserProvider: React.FC<IUserProvider> = ({ children }) => {
     if (accessToken) {
       setIsAuth(true)
       setAccessToken(accessToken)
-      getMe(accessToken).then((userProfile) => {
+      UserService.getMe().then((userProfile) => {
+        console.log({ userProfile })
         setUserData({
           user_id: userProfile.user_id,
           username: userProfile.username,
-          email: userProfile.email,
-          balance: userProfile.balance,
-          hashed_password: userProfile.hashed_password
+          wallet_address: userProfile.wallet_address
         })
       })
     }

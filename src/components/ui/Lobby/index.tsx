@@ -30,31 +30,47 @@ const Lobby: React.FC<ILobby> = ({ initGame, wsc }) => {
   const navigate = useNavigate()
   const { wsData, setwsData, userData } = useContext(UserContext)
 
-  const [searchDuration, setSearchDuration] = React.useState<string>("01:00")
-  const [seconds, setSeconds] = React.useState<number>(300)
+  const [searchDuration, setSearchDuration] = React.useState<string>("00:30")
+  const [seconds, setSeconds] = React.useState<number>(30)
+  const [secondsIsNeeded, setSecondsIsNeeded] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     wsc.onPlayerJoined((data: { players: string[], room_id: string }) => {
       console.log("Присоенденился игрок", data)
       setwsData(wsd => ({ ...wsd, players: data.players }))
     })
-    wsc.onStartGame(data => {
-      console.log('game started', data)
-      initGame()
+
+    if (wsData.time_to_start !== null) {
+      console.log('game started in', wsData.time_to_start)
+      setSeconds(wsData.time_to_start)
+      setSecondsIsNeeded(true)
+      setTimeout(() => {
+        initGame()
+      }, wsData.time_to_start * 1000)
+    }
+    wsc.onGameStarted(data => {
+      console.log('game started in', data.time_to_start)
+      setSeconds(data.time_to_start)
+      setSecondsIsNeeded(true)
+      setTimeout(() => {
+        initGame()
+      }, data.time_to_start * 1000)
     })
   }, [])
 
+
+
   React.useEffect(() => { console.log('wsData', wsData) }, [wsData])
 
-  React.useEffect(() => {
-    console.log(secondsSince(wsData.roomData.created_at))
-    const secondsToStart = 5 * 60 - secondsSince(wsData.roomData.created_at)
-    if (secondsToStart < 0) {
-      navigate('/home')
-    } else {
-      setSeconds(secondsToStart)
-    }
-  }, [])
+  // React.useEffect(() => {
+  //   console.log(secondsSince(wsData.roomData.created_at))
+  //   const secondsToStart = 0.5 * 60 - secondsSince(wsData.roomData.created_at)
+  //   if (secondsToStart < 0) {
+  //     navigate('/home')
+  //   } else {
+  //     setSeconds(secondsToStart)
+  //   }
+  // }, [])
 
   React.useEffect(() => {
     const timer = setInterval(() => {
@@ -74,9 +90,9 @@ const Lobby: React.FC<ILobby> = ({ initGame, wsc }) => {
 
   React.useEffect(() => {
     if (seconds <= 0) {
-      wsc.startGame(wsData.currentRoom)
+      // wsc.startGame(wsData.currentRoom)
     }
-    if (seconds <= -5) {
+    if (seconds <= -5 && secondsIsNeeded) {
       navigate('/home')
     }
   }, [seconds])
@@ -91,12 +107,16 @@ const Lobby: React.FC<ILobby> = ({ initGame, wsc }) => {
         flex flex-col justify-start gap-8">
           <div className="w-full flex justify-between items-center relative">
             <div className="flex justify-start items-center gap-2">
-              <span className="font-montserrat text-sm text-gray-100">The game will start in</span>
-              <span className="font-montserrat text-base text-white font-bold">{searchDuration}</span>
+              <span className="font-montserrat text-sm text-gray-100">
+                {secondsIsNeeded ? "The game will start in" : "Waiting for more players..."}
+              </span>
+              <span className="font-montserrat text-base text-white font-bold">
+                {secondsIsNeeded ? searchDuration : ""}
+              </span>
             </div>
             <div className="flex justify-start items-center gap-2">
               <div className="flex justify-start items-center gap-0.5">
-                <span className="font-montserrat text-base font-bold text-red-400">{wsData.players.length}</span>
+                <span className="font-montserrat text-base font-bold text-red-400">{wsData?.players?.length}</span>
                 <span className="font-montserrat text-base text-gray-100">/</span>
                 <span className="font-montserrat text-base text-gray-100">50</span>
               </div>
@@ -110,7 +130,7 @@ const Lobby: React.FC<ILobby> = ({ initGame, wsc }) => {
             </div>
           </div>
           <div className="grid grid-cols-5 gap-x-3 gap-y-1">
-            {Array.from({ length: rows }).map((_, rowIndex) => (
+            {wsData?.players && Array.from({ length: rows }).map((_, rowIndex) => (
               <React.Fragment key={rowIndex}>
                 {Array.from({ length: columns }).map((_, colIndex) => {
                   const cellIndex = colIndex * rows + rowIndex;
